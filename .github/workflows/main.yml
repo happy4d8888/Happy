@@ -1,0 +1,56 @@
+name: Build and Upload to Itch
+
+on:
+  push:
+    branches:
+      - main  # Or 'master' if your branch is named that
+
+env:
+  UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+  # CHANGE THIS to your version (Check Unity Hub > Installs)
+  UNITY_VERSION: 2022.3.10f1 
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Get your project files
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # 2. Free up disk space (Critical for Unity builds)
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: true
+
+      # 3. Build the Game (The Heavy Lifting)
+      - name: Build WebGL
+        uses: game-ci/unity-builder@v4
+        with:
+          targetPlatform: WebGL
+          version: ${{ env.UNITY_VERSION }}
+          # This saves the build to a folder named 'build/WebGL'
+
+      # 4. Zip the files CORRECTLY (Fixes black screen)
+      - name: Zip Build
+        run: |
+          cd build/WebGL/WebGL
+          zip -r ../../../game.zip . 
+
+      # 5. Send to Itch.io
+      - name: Deploy to Itch.io
+        uses: manleydev/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
+          CHANNEL: html
+          ITCH_GAME: your-game-name-here # CHANGE THIS
+          ITCH_USER: your-username-here   # CHANGE THIS
+          PACKAGE: game.zip
