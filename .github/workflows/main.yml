@@ -1,57 +1,22 @@
-name: Build and Upload to Itch
+name: Acquire License
 
-on:
-  push:
-    branches:
-      - main
+on: [push]
 
 jobs:
-  build-and-deploy:
+  activation:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Request Manual Activation File
+        id: getManualLicenseFile
+        uses: game-ci/unity-request-activation-file@v2
         with:
-          lfs: true
+          unityVersion: 2022.3.10f1 # Match your Project version!
 
-      # 2. Free Space
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
+      - name: Upload Activation File
+        uses: actions/upload-artifact@v4
         with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          swap-storage: true
-
-      # 3. DECODE LICENSE (The Fix)
-      - name: Decode License
-        run: |
-          echo "${{ secrets.UNITY_LICENSE }}" | base64 --decode > .ulf
-          
-     # 4. Build
-      - name: Build WebGL
-        uses: game-ci/unity-builder@v4
-        with:
-          targetPlatform: WebGL
-          version: 2022.3.10f1
-          unityLicensingServer: .ulf
-          allowDirtyBuild: true  # <--- ADD THIS LINE HERE
-
-      # 5. Zip
-      - name: Zip Build
-        run: |
-          cd build/WebGL/WebGL
-          zip -r ../../../game.zip . 
-
-      # 6. Deploy
-      - name: Deploy to Itch.io
-        uses: manleydev/butler-publish-itchio-action@master
-        env:
-          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: html
-          ITCH_GAME: Happy # <--- CHANGE THIS
-          ITCH_USER: ramenian   # <--- CHANGE THIS
-          PACKAGE: game.zip
+          name: Unity_v2022.3.10f1.alf
+          path: ${{ steps.getManualLicenseFile.outputs.filePath }}
